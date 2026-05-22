@@ -12,9 +12,9 @@ class IncidentDTO {
 
         this.location = location;
 
-        this.state = "Assam";
+       // this.state = "Assam";
 
-        this.country = "India";
+       // this.country = "India";
 
         this.sourceUrl = rawIncident.url?.trim() || "";
 

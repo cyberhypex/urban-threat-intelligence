@@ -9,7 +9,7 @@ const predictRisk = async (req, res) => {
         logger.info(
             `Risk prediction request received for location: ${location}`
         );
-
+        
         if (!location || !location.trim()) {
             logger.warn("Prediction request missing location");
 
@@ -34,7 +34,8 @@ const predictRisk = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: riskAssessment
+            data: {...riskAssessment, incidents}
+            
         });
 
     } catch (error) {
