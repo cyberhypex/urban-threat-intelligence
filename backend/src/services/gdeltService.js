@@ -64,7 +64,6 @@ const fetchIncidentsByLocation = async (locationData) => {
         logger.info(`Generated GDELT query: ${query}`);
 
         const response = await axios.get(GDELT_BASE_URL, {
-          //  timeout: 10000,
             headers: {
                 "User-Agent": "UrbanThreatIntelligence/1.0"
             },
@@ -72,27 +71,46 @@ const fetchIncidentsByLocation = async (locationData) => {
                 query,
                 mode: "ArtList",
                 format: "json",
-                maxrecords: 10,
+                maxrecords: 50,
                 timespan: TIME_WINDOW
             }
         });
 
         const articles = response?.data?.articles || [];
 
-        const incidents = articles.map((article) => {
-            const { category, severity } = classifyIncident(article.title);
+        logger.info(`Fetched ${articles.length} raw articles`);
 
-            return new IncidentDTO(
+        const incidents = [];
+        const seenHashes = new Set();
+
+        articles.forEach((article) => {
+            const { category, severity } =
+                classifyIncident(article.title);
+
+            const incident = new IncidentDTO(
                 article,
                 category,
                 severity,
                 city
             );
+
+            if (!seenHashes.has(incident.hash)) {
+                seenHashes.add(incident.hash);
+                incidents.push(incident);
+            }
         });
+
+        logger.info(
+            `Deduplicated incidents count: ${incidents.length}`
+        );
 
         await redisClient.set(cacheKey, incidents, {
             ex: 300
         });
+
+        logger.info(
+            `Cached ${incidents.length} incidents for ${normalizedLocation}`
+        );
 
         return incidents;
 
