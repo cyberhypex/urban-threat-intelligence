@@ -11,4 +11,4 @@ const logger = require("../utils/logger");
             process.exit(1);
         }
     }
-    module.exports=connectDB;
+module.exports=connectDB;
