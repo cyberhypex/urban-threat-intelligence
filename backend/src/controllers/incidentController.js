@@ -3,25 +3,31 @@ const logger = require("../utils/logger");
 
 const getIncidents = async (req, res) => {
     try {
-        const { location } = req.query;
+        const { city, state, country } = req.query;
 
         logger.info(
-            `Incoming incident API request for location: ${location}`
+            `Incoming incident API request for location: ${city}, ${state}, ${country}`
         );
 
-        if (!location || !location.trim()) {
-            logger.warn("Location query parameter missing");
+        if (!city || !city.trim()) {
+            logger.warn("City query parameter missing");
 
             return res.status(400).json({
                 success: false,
-                message: "Location query parameter is required"
+                message: "City query parameter is required"
             });
         }
 
-        const incidents = await fetchIncidentsByLocation(location);
+        const locationData = {
+            city: city.trim(),
+            state: state?.trim() || "",
+            country: country?.trim() || ""
+        };
+
+        const incidents = await fetchIncidentsByLocation(locationData);
 
         logger.info(
-            `Returning ${incidents.length} incidents for ${location}`
+            `Returning ${incidents.length} incidents for ${locationData.city}`
         );
 
         return res.status(200).json({

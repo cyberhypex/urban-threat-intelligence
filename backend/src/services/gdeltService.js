@@ -21,23 +21,31 @@ axiosRetry(axios, {
     }
 });
 
-const fetchIncidentsByLocation = async (location) => {
+const fetchIncidentsByLocation = async (locationData) => {
     try {
-        logger.info(`Incident fetch request received for location: ${location}`);
-
-        if (!location || !location.trim()) {
+        if (!locationData || !locationData.city) {
             logger.warn("Location validation failed");
             throw new Error("Location is required");
         }
+
+        const city = locationData.city.trim();
+        const state = locationData.state?.trim() || "";
+        const country = locationData.country?.trim() || "";
+
+        const normalizedLocation =
+            `${city} ${state} ${country}`.trim();
+
+        logger.info(
+            `Incident fetch request received for location: ${normalizedLocation}`
+        );
 
         if (!GDELT_BASE_URL) {
             logger.error("GDELT base URL missing in environment variables");
             throw new Error("GDELT configuration missing");
         }
 
-        const normalizedLocation = location.trim();
-
-        const cacheKey = `incidents:${normalizedLocation}:${TIME_WINDOW}:${QUERY_CONTEXT}`;
+        const cacheKey =
+            `incidents:${city}:${state}:${country}:${TIME_WINDOW}:${QUERY_CONTEXT}`;
 
         logger.info(`Checking Redis cache for key: ${cacheKey}`);
 
@@ -50,12 +58,13 @@ const fetchIncidentsByLocation = async (location) => {
 
         logger.info(`Cache miss for ${normalizedLocation}`);
 
-        const query = `${normalizedLocation} AND (riot OR protest OR accident OR crime OR violence OR murder OR robbery OR fire OR flood)`;
+        const query =
+            `${normalizedLocation} AND (riot OR protest OR accident OR crime OR violence OR murder OR robbery OR fire OR flood)`;
 
         logger.info(`Generated GDELT query: ${query}`);
 
         const response = await axios.get(GDELT_BASE_URL, {
-           // timeout: 10000,
+          //  timeout: 10000,
             headers: {
                 "User-Agent": "UrbanThreatIntelligence/1.0"
             },
@@ -68,13 +77,7 @@ const fetchIncidentsByLocation = async (location) => {
             }
         });
 
-        logger.info("GDELT API call successful");
-
         const articles = response?.data?.articles || [];
-
-        logger.info(
-            `Received ${articles.length} raw articles from GDELT for ${normalizedLocation}`
-        );
 
         const incidents = articles.map((article) => {
             const { category, severity } = classifyIncident(article.title);
@@ -83,21 +86,13 @@ const fetchIncidentsByLocation = async (location) => {
                 article,
                 category,
                 severity,
-                normalizedLocation
+                city
             );
         });
-
-        logger.info(
-            `Successfully normalized ${incidents.length} incidents for ${normalizedLocation}`
-        );
 
         await redisClient.set(cacheKey, incidents, {
             ex: 300
         });
-
-        logger.info(
-            `Cached ${incidents.length} incidents for ${normalizedLocation} for 5 minutes`
-        );
 
         return incidents;
 

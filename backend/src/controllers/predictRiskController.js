@@ -4,24 +4,31 @@ const logger = require("../utils/logger");
 
 const predictRisk = async (req, res) => {
     try {
-        const { location } = req.query;
+        const { city, state, country } = req.query;
 
         logger.info(
-            `Risk prediction request received for location: ${location}`
+            `Risk prediction request received for location: ${city}, ${state}, ${country}`
         );
-        
-        if (!location || !location.trim()) {
-            logger.warn("Prediction request missing location");
+
+        if (!city || !city.trim()) {
+            logger.warn("Prediction request missing city");
 
             return res.status(400).json({
                 success: false,
-                message: "Location query parameter is required"
+                message: "City query parameter is required"
             });
         }
 
-        const normalizedLocation = location.trim();
+        const locationData = {
+            city: city.trim(),
+            state: state?.trim() || "",
+            country: country?.trim() || ""
+        };
 
-        const incidents = await fetchIncidentsByLocation(normalizedLocation);
+        const incidents = await fetchIncidentsByLocation(locationData);
+
+        const normalizedLocation =
+            `${locationData.city} ${locationData.state} ${locationData.country}`.trim();
 
         const riskAssessment = calculateRiskAssessment(
             normalizedLocation,
@@ -34,8 +41,10 @@ const predictRisk = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: {...riskAssessment, incidents}
-            
+            data: {
+                ...riskAssessment,
+                incidents
+            }
         });
 
     } catch (error) {
